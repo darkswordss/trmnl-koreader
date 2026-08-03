@@ -1,98 +1,110 @@
 # TRMNL Display Plugin for KOReader
 
-Display your personalized [TRMNL](https://trmnl.app) dashboard on your e-ink device.
+Turn a Kindle, Kobo, or any KOReader-compatible e-reader into a [TRMNL](https://trmnl.com) dashboard.
 
 A spiritual successor to the [TRMNL Kindle Script](https://github.com/usetrmnl/trmnl-kindle).
 
-## Table of Contents
+## What You Need
 
-- [TRMNL Display Plugin for KOReader](#trmnl-display-plugin-for-koreader)
-  - [Table of Contents](#table-of-contents)
-  - [Prerequisites](#prerequisites)
-  - [Quick Start](#quick-start)
-    - [1. Register Device](#1-register-device)
-    - [2. Configure API Key](#2-configure-api-key)
-    - [3. Configure WiFi (Recommended)](#3-configure-wifi-recommended)
-    - [4. Fetch](#4-fetch)
-  - [Usage](#usage)
-  - [Configuration](#configuration)
-  - [Troubleshooting](#troubleshooting)
-  - [Learn More](#learn-more)
+- A KOReader-compatible device with [KOReader](https://github.com/koreader/koreader) installed
+  - Kindles need jailbreaking first: [instructions](https://github.com/usetrmnl/trmnl-kindle)
+- A TRMNL [BYOD license](https://shop.trmnl.com/products/byod), a [BYOD/S setup](https://docs.trmnl.com/go/diy/byod-s), or your own BYOS server
 
-## Prerequisites
+## Install
 
-- KOReader-compatible device with [KOReader](https://github.com/koreader/koreader) installed
-  - Kindle requires jailbreaking: [instructions](https://github.com/usetrmnl/trmnl-kindle)
-- TRMNL [BYOD license](https://shop.trmnl.com/products/byod) or [BYOD/S setup](https://docs.trmnl.com/go/diy/byod-s)
+1. Register your device at [trmnl.com](https://trmnl.com): gear icon (⚙️) → BYOD device settings. Pick a device model and enter your MAC address, which KOReader shows under **Menu → Network → Info**.
+2. Download this repository (green **Code** button → **Download ZIP**) and unzip it.
+3. Open `trmnl.koplugin/apikey.txt` and replace its contents with your device API key.
+4. Copy the whole `trmnl.koplugin` folder into KOReader's `plugins/` directory. On a Kindle: connect over USB, open the mounted drive, and drop the folder into `/koreader/plugins/`.
+5. Restart KOReader.
+6. Open **Tools → TRMNL Display** to confirm the plugin loaded, then choose **Fetch screen now**.
 
-## Quick Start
+If the screen appears, you are done. Tap it (or press a button on non-touch devices) to dismiss it.
 
-### 1. Register Device
+## Run It as a Dashboard
 
-1. Log in to [trmnl.com](https://trmnl.com)
-2. Click gear icon (⚙️) → BYOD device settings
-3. Select your device model and add MAC address (find in KOReader: **Menu → Network → Info**)
+For a device that sits on a desk and updates itself:
 
-### 2. Configure API Key
+1. Stop KOReader from sleeping:
+   - **Tools → More tools → Keep alive** — enable
+   - **Settings → Device → Auto suspend timeout** — disable
+2. **Tools → TRMNL Display → Enable auto-refresh**. The first fetch happens immediately, then repeats on your refresh interval.
+3. Leave KOReader on that screen.
 
-**Option A:** Create `apikey.txt` in `plugins/trmnl.koplugin/` with your API key, then restart KOReader
+Tap the display to stop. To start again later, use **Start TRMNL (interactive)**.
 
-**Option B:** In KOReader: **Tools → TRMNL Display → Configure TRMNL**
+## Make the Battery Last
 
-### 3. Configure WiFi (Recommended)
+This is the difference between a few days and a few weeks of runtime.
 
-**Settings → Network** and set:
+- **Settings → Frontlight** — set to zero
+- **Settings → Network:**
+  - Uncheck **Wi-Fi connection** so Wi-Fi is not permanently on
+  - **Action when Wi-Fi is off**: `turn on`
+  - **Action when done with Wi-Fi**: `turn off`
+- Use a longer refresh interval. Every fetch wakes the radio and repaints the screen.
+- Keep **E-ink refresh type** on **UI (balanced)**. Only switch to **Full** when image quality matters more than power.
 
-- "Action when Wi-Fi is off: `turn on`"
-- "Action when done with Wi-Fi: `turn off`"
+## Settings
 
-### 4. Fetch
+**Tools → TRMNL Display → Configure TRMNL**
 
-**Tools → TRMNL Display → Fetch screen now**
+| Setting | What it does |
+|---|---|
+| **API Key** | Your device API token |
+| **Base URL** | Server to fetch from. Defaults to `https://trmnl.app`; change it for BYOS |
+| **Refresh Interval** | Seconds between fetches (default 1800) |
+| **MAC address header name** | Header the MAC is sent under. Defaults to `ID`, which is what TRMNL and most BYOS servers expect |
+| **MAC address** | Leave blank to auto-detect. Set it manually if detection fails or you need to send a specific value |
 
-## Usage
+Also in the **TRMNL Display** menu:
 
-- **Manual fetch:** **Tools → TRMNL Display → Fetch screen now**
-- **Auto-refresh mode:** **Tools → TRMNL Display → Enable auto-refresh** (prevents sleep, refreshes every 30 min by default)
-- **Tap screen** to close displayed image
+- **Use server refresh interval** — let the server's `refresh_rate` override your local interval. Recommended, since you can then retune timing from the dashboard without touching the device.
+- **E-ink refresh type** — UI (balanced), Full (best quality), Flash UI, or Partial (fastest)
+- **Show status notifications** — errors are always shown regardless
 
-## Configuration
+## Gestures
 
-Access via **Tools → TRMNL Display → Configure TRMNL**
+The plugin registers two actions with KOReader's dispatcher, so you can bind them to gestures, corner taps, or hardware keys via **Settings → Taps and gestures → Gesture manager**:
 
-- **API Key** - Your TRMNL auth token
-- **Refresh Interval** - Seconds between fetches (default: 1800)
-- **Use Server Refresh Interval** - Let TRMNL control timing
-- **E-ink Refresh Type** - UI (balanced), Full (best quality), Flash UI, or Partial (fastest)
-- **Show Status Notifications** - Toggle info messages (errors always shown)
+- **TRMNL: Fetch now** — pull the next screen without opening menus
+- **TRMNL: Start (interactive)**
+
+Binding *Fetch now* to a corner tap is a fast way to page through dashboards.
+
+## Using Your Own Server
+
+Set **Base URL** to your server, for example `https://your-server.com`. The plugin calls `GET <base_url>/api/display` and expects a JSON body containing `image_url`, optionally with `refresh_rate` and `filename`.
+
+Requests include the device MAC under the header named in **MAC address header name** (`ID` by default). [Terminus](https://github.com/usetrmnl/terminus) and `byos_laravel` both read `id`, so the default works as-is. If your server expects something else, change the header name rather than patching the plugin.
 
 ## Troubleshooting
 
-**"API request failed (401/403)"**
+**"Device not found", or fetches that stopped working after you changed the MAC address**
 
-- Verify API key in settings
-- Ensure device is registered at trmnl.com
-- Check BYOD license is active
+Changing a device's MAC address on trmnl.com **regenerates its API key**. Official firmware re-registers itself and picks up the new key automatically, but this plugin cannot. Go back into the device settings, copy the API key again, and paste the new one into the plugin.
+
+**Other errors mentioning the server**
+
+The plugin shows whatever the server reported. The same text is written to `koreader/crash.log`, which is the first place to look when reporting a problem.
 
 **"Failed to reach TRMNL API"**
 
-- Check WiFi connection
+The request never got out. Check Wi-Fi, and check **Base URL** if you are on BYOS.
 
 **Device keeps sleeping**
 
-- Use **Enable auto-refresh** (not "Fetch screen now")
-- Disable "Auto-suspend timeout" in **Settings → Device**
-- Use KOReader's "keep awake" feature to prevent sleep during refresh (Tools > More Tools > Page 2 > Keep alive)
+Use **Enable auto-refresh** rather than **Fetch screen now**, and apply the two sleep settings under [Run It as a Dashboard](#run-it-as-a-dashboard).
 
-**Ghosting/unclear image**
-- Change E-ink refresh type to **Full** for better quality
+**Ghosting or a muddy image**
+
+Set **E-ink refresh type** to **Full**.
 
 ## Learn More
 
-- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Architecture, API details, development setup
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Code style, contribution workflow
-- **[main.lua](trmnl.koplugin/main.lua)** - Plugin implementation
-- **[TRMNL API Docs](https://trmnl.com/developers)** - Official API reference
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** — architecture, API details, development setup
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — code style and contribution workflow
+- **[TRMNL API Docs](https://trmnl.com/developers)** — official API reference
 
 ---
 
