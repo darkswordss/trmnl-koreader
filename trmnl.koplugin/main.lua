@@ -1101,7 +1101,7 @@ function TrmnlDisplay:showConfigDialog()
                 input_type = "number",
             },
             {
-                text = self.settings.mac_header_name or "MAC address",
+                text = self.settings.mac_header_name or "ID",
                 hint = _("MAC address header name (e.g. ID)"),
                 input_type = "string",
             },
