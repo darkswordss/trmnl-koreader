@@ -329,9 +329,11 @@ function TrmnlDisplay:fetchScreenMetadata()
         mac_address = manual_mac
         logger.dbg("TRMNL: Using manual MAC address:", mac_address)
     else
-        -- No manual MAC or empty string - try auto-detection
-        mac_address = self:getMacAddress() or "00:00:00:00:00:00"
-        logger.dbg("TRMNL: Using MAC address:", mac_address)
+        -- No manual MAC or empty string - try auto-detection.
+        -- Staying nil drops the header from the table constructor below, which is
+        -- what we want: claiming a made-up MAC is worse than claiming none.
+        mac_address = self:getMacAddress()
+        logger.dbg("TRMNL: Using MAC address:", mac_address or "(none detected)")
     end
 
     -- Get custom header name for MAC address
