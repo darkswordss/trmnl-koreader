@@ -900,7 +900,14 @@ Perform the actual fetch and display after WiFi is ready.
 function TrmnlDisplay:_performFetch()
     local response = self:fetchScreenMetadata()
     if not response or not response.image_url then
-        self:handleFetchError("Failed to fetch screen metadata")
+        -- NOTE: the API reports device/token problems as HTTP 200 with
+        -- {"status": 500, "error": "..."}, so the only place that detail survives is here.
+        local detail = response and (response.error or
+            (response.status and "status " .. tostring(response.status)))
+        if detail then
+            logger.err("TRMNL: API returned no image_url:", detail)
+        end
+        self:handleFetchError(detail or "Failed to fetch screen metadata")
         NetworkMgr:afterWifiAction()
         return
     end
