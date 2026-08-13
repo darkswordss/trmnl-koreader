@@ -208,65 +208,39 @@ Uses FFI (Foreign Function Interface) to call POSIX system calls:
 @treturn string|nil MAC address (format: "XX:XX:XX:XX:XX:XX") or nil if not available
 ]]
 function TrmnlDisplay:getMacAddress()
-    local ffi = require("ffi")
-    local C = ffi.C
-    require("ffi/posix_h")
-
-    -- Create socket for ioctl calls
-    local socket = C.socket(C.PF_INET, C.SOCK_DGRAM, C.IPPROTO_IP)
-    if socket == -1 then
-        logger.warn("TRMNL: Could not create socket for MAC address retrieval")
-        return nil
-    end
-
-    -- Get network interfaces
-    local ifaddr = ffi.new("struct ifaddrs *[1]")
-    if C.getifaddrs(ifaddr) == -1 then
-        C.close(socket)
-        logger.warn("TRMNL: Could not get network interfaces")
-        return nil
-    end
-
-    local mac_address = nil
-    local ifa = ifaddr[0]
-
-    -- Loop through interfaces to find wireless one
-    while ifa ~= nil do
-        if ifa.ifa_addr ~= nil and
-           bit.band(ifa.ifa_flags, C.IFF_UP) ~= 0 and
-           bit.band(ifa.ifa_flags, C.IFF_LOOPBACK) == 0 then
-
-            -- Check if wireless interface
-            local iwr = ffi.new("struct iwreq")
-            ffi.copy(iwr.ifr_ifrn.ifrn_name, ifa.ifa_name, C.IFNAMSIZ)
-            if C.ioctl(socket, C.SIOCGIWNAME, iwr) ~= -1 then
-                -- This is a wireless interface, get its MAC address
-                local ifr = ffi.new("struct ifreq")
-                ffi.copy(ifr.ifr_ifrn.ifrn_name, ifa.ifa_name, C.IFNAMSIZ)
-                if C.ioctl(socket, C.SIOCGIFHWADDR, ifr) ~= -1 then
-                    mac_address = string.format("%02X:%02X:%02X:%02X:%02X:%02X",
-                        bit.band(ifr.ifr_ifru.ifru_hwaddr.sa_data[0], 0xFF),
-                        bit.band(ifr.ifr_ifru.ifru_hwaddr.sa_data[1], 0xFF),
-                        bit.band(ifr.ifr_ifru.ifru_hwaddr.sa_data[2], 0xFF),
-                        bit.band(ifr.ifr_ifru.ifru_hwaddr.sa_data[3], 0xFF),
-                        bit.band(ifr.ifr_ifru.ifru_hwaddr.sa_data[4], 0xFF),
-                        bit.band(ifr.ifr_ifru.ifru_hwaddr.sa_data[5], 0xFF))
-                    logger.info("TRMNL: Auto-detected MAC address:", mac_address)
-                    break -- Found wireless interface MAC
+    local interfaces = {
+        "wlan0",
+        "wlan1",
+        "mlan0",
+    }
+ 
+    for _, iface in ipairs(interfaces) do
+        local path = "/sys/class/net/" .. iface .. "/address"
+        local file = io.open(path, "r")
+ 
+        if file then
+            local mac = file:read("*l")
+            file:close()
+ 
+            if mac and mac ~= "" then
+                mac = mac:upper()
+ 
+                -- Ignore invalid/all-zero addresses
+                if mac ~= "00:00:00:00:00:00" then
+                    logger.info(
+                        "TRMNL: Auto-detected MAC address:",
+                        mac,
+                        "interface:",
+                        iface
+                    )
+                    return mac
                 end
             end
         end
-        ifa = ifa.ifa_next
     end
-
-    C.freeifaddrs(ifaddr[0])
-    C.close(socket)
-
-    if not mac_address then
-        logger.info("TRMNL: No wireless interface MAC address found")
-    end
-
-    return mac_address
+ 
+    logger.info("TRMNL: No wireless interface MAC address found")
+    return nil
 end
 
 --============================================================================--
